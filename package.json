@@ -9,10 +9,20 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "**Author**: Your Name Goes Here **Version**: 1.0.0 (increment the patch/fix version number if you make more commits past your first submission)",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
-    "express": "^4.17.1"
-  }
+    "express": "^4.17.1",
+    "superagent": "^5.2.2"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ryan-Geddes/city_explorer_api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Ryan-Geddes/city_explorer_api/issues"
+  },
+  "homepage": "https://github.com/Ryan-Geddes/city_explorer_api#readme"
 }
