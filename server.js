@@ -27,7 +27,7 @@ app.get('/', (request, response) =>{
 });
 
 app.get('/location', (request, response)=>{
-    let data = require('./data-contract/location.json');
+    let data = require('./data/location.json');
     let newData = new Location(data[0]);
     console.log(newData);
     response.status(200).json(newData);
@@ -45,16 +45,37 @@ function Location(obj) {
 
 //write a route for restaurants
 
+app.get('/weather', (request, response)=>{
+
+    let json = require('./data/weather.json');
+    let forecast = [];
+    json.data.forEach(weatherObj => {
+        console.log(weatherObj);
+        let dayWeather = new Weather(weatherObj);
+        forecast.push(dayWeather);
+        console.log(dayWeather);
+    });
+    
+    console.log(forecast);
+response.status(200).json(forecast);
+});
+
+function Weather(obj) {
+    this.forecast = obj.weather.description;
+    let result = new Date(obj.valid_date);
+    this.time = result.toDateString();
+}
+
 app.get('/restaurants', (request, response)=>{
 
-    let data = require('./data-contract/restaurants.json');
+    let data = require('./data/weather.json');
     let allRestaurants = [];
 
     data.nearby_restaurants.forEach(restObj => {
     let normRest = new Restaurant(restObj);
     allRestaurants.push(normRest);
     });
-
+console.log(normRest);
 response.status(200).json(allRestaurants);
 });
 
