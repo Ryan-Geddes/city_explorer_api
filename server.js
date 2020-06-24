@@ -21,6 +21,11 @@ app.use( cors() );
 
 app.listen(PORT, () => console.log('server running on port', PORT));
 
+//API Keys
+
+
+
+
 // route on the '/' in the URL bar of the browser
 app.get('/', (request, response) =>{
     response.send('testing123');
@@ -31,16 +36,26 @@ app.get('/location', (request, response)=>{
     let newData = new Location(data[0]);
     console.log(newData);
     response.status(200).json(newData);
+    
+//https://us1.locationiq.com/v1/search.php?key=YOUR_PRIVATE_TOKEN&q=SEARCH_STRING&format=json
+
+const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${request.query.city}&format=json`
 });
 
+superagent.get(API)
+    .then(data => {
+        let location = new Location(data.body[0],request.query.city);
+        response.status(200).json(location);
+    })
 //constructor to normalize data pulled from API
 //Location Constructor function
 //take in some big obj and turn it into something that matches the contract
 
-function Location(obj) {
+function Location(obj, city) {
     this.latitude = obj.lat;
     this.longitude = obj.lon;
     this.formatted_query = obj.display_name;
+    this.search_query = city;
 }
 
 //write a route for restaurants
