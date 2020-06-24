@@ -33,21 +33,21 @@ app.get('/', (request, response) =>{
 });
 
 app.get('/location', (request, response)=>{
-    let data = require('./data/location.json');
-    let newData = new Location(data[0]);
-    console.log(newData);
-    response.status(200).json(newData);
+    // let data = require('./data/location.json');
+    // let newData = new Location(data[0]);
+    // console.log(newData);
+    // response.status(200).json(newData);
     
 //https://us1.locationiq.com/v1/search.php?key=YOUR_PRIVATE_TOKEN&q=SEARCH_STRING&format=json
 
 const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${request.query.city}&format=json`
-});
 
 superagent.get(API)
-    .then(data => {
-        let location = new Location(data.body[0],request.query.city);
-        response.status(200).json(location);
-    })
+.then(data => {
+    let location = new Location(data.body[0],request.query.city);
+    response.status(200).json(location);
+})
+});
 //constructor to normalize data pulled from API
 //Location Constructor function
 //take in some big obj and turn it into something that matches the contract
