@@ -48,17 +48,26 @@ function Location(obj) {
 app.get('/weather', (request, response)=>{
 
     let json = require('./data/weather.json');
-    let forecast = [];
-    json.data.forEach(weatherObj => {
-        console.log(weatherObj);
-        let dayWeather = new Weather(weatherObj);
-        forecast.push(dayWeather);
-        console.log(dayWeather);
-    });
-    
-    console.log(forecast);
-response.status(200).json(forecast);
+    let data = json.data;
+    response.status(200).json(getWeather(data));
 });
+
+const getWeather = (arr) => {
+    let forecast = arr.map(function(weatherObj){
+        let dayWeather = new Weather(weatherObj);
+        return dayWeather;
+    });
+    return forecast;
+};
+
+//previous code before using map:
+// json.data.forEach(weatherObj => {
+//     // console.log(weatherObj);
+//     let dayWeather = new Weather(weatherObj);
+//     forecast.push(dayWeather);
+//     // console.log(dayWeather);
+// });
+
 
 function Weather(obj) {
     this.forecast = obj.weather.description;
