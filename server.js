@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
 
+
 //THIS IS MAGIC
 const PORT = process.env.PORT;
 
@@ -43,11 +44,13 @@ app.get('/location', (request, response)=>{
 
 const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${request.query.city}&format=json`
 
+
 superagent.get(API)
 .then(data => {
     let location = new Location(data.body[0], request.query.city);
     response.status(200).json(location);
 })
+
 });
 //constructor to normalize data pulled from API
 //Location Constructor function
