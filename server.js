@@ -33,6 +33,7 @@ app.get('/', (request, response) =>{
 });
 
 app.get('/location', (request, response)=>{
+    //code before refactoring to use API:
     // let data = require('./data/location.json');
     // let newData = new Location(data[0]);
     // console.log(newData);
@@ -44,7 +45,7 @@ const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}
 
 superagent.get(API)
 .then(data => {
-    let location = new Location(data.body[0],request.query.city);
+    let location = new Location(data.body[0], request.query.city);
     response.status(200).json(location);
 })
 });
