@@ -6,7 +6,6 @@ const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
 
-
 //THIS IS MAGIC
 const PORT = process.env.PORT;
 
@@ -34,16 +33,21 @@ app.get('/', (request, response) =>{
 });
 
 app.get('/location', (request, response)=>{
+    //code before refactoring to use API:
+    // let data = require('./data/location.json');
+    // let newData = new Location(data[0]);
+    // console.log(newData);
+    // response.status(200).json(newData);
+    
+//https://us1.locationiq.com/v1/search.php?key=YOUR_PRIVATE_TOKEN&q=SEARCH_STRING&format=json
 
 const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${request.query.city}&format=json`
-
 
 superagent.get(API)
 .then(data => {
     let location = new Location(data.body[0], request.query.city);
     response.status(200).json(location);
 })
-
 });
 
 //constructor to normalize data pulled from API
@@ -60,16 +64,10 @@ function Location(obj, city) {
 //write a route for restaurants
 
 app.get('/weather', (request, response)=>{
-    let lat = request.query.latitude;
-    let lon = request.query.longitude;
-    const API = `https://api.weatherbit.io/v2.0/forecast/daily?&lat=${lat}&lon=${lon}&key=${process.env.WEATHERBIT}`;
-    superagent.get(API)
-    .then(results =>{
-        //weather array info is stored in array named 'data'\
-        let data = results.body.data;
-        response.status(200).json(getWeather(data));
-    });
 
+    let json = require('./data/weather.json');
+    let data = json.data;
+    response.status(200).json(getWeather(data));
 });
 
 const getWeather = (arr) => {
@@ -80,47 +78,19 @@ const getWeather = (arr) => {
     return forecast;
 };
 
+//previous code before using map:
+// json.data.forEach(weatherObj => {
+//     // console.log(weatherObj);
+//     let dayWeather = new Weather(weatherObj);
+//     forecast.push(dayWeather);
+//     // console.log(dayWeather);
+// });
+
 
 function Weather(obj) {
     this.forecast = obj.weather.description;
     let result = new Date(obj.valid_date);
     this.time = result.toDateString();
-}
-
-app.get('/trails', (request,response)=>{
-    let lat = request.query.latitude;
-    let lon = request.query.longitude;
-    const API = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&key=${process.env.HIKING}`
-    console.log(API);
-    superagent.get(API)
-        .then(results => {
-            let data = results.body.trails;
-            console.log(data);
-            response.status(200).json(getTrails(data));
-        });
-});
-
-const getTrails = (arr) => {
-    let trailList = arr.map(function(trailObj){
-        let normTrail = new Trail (trailObj);
-        return normTrail;
-    });
-    return trailList;
-
-};
-
-
-function Trail(obj) {
-    this.name = obj.name;
-    this.location = obj.location;
-    this.length = obj.length;
-    this.stars = obj.stars;
-    this.star_votes = obj.starVotes;
-    this.summary = obj.summary;
-    this.trail_url = obj.url;
-    this.conditions = obj.conditionStatus;
-    this.condition_date = obj.conditionDate.slice(0, obj.conditionDate.indexOf(' '));
-    this.condition_time = obj.conditionDate.slice(obj.conditionDate.indexOf(' '));
 }
 
 app.get('/restaurants', (request, response)=>{
@@ -147,9 +117,7 @@ app.use('*', (request, response)=>{
 });
 
 app.use((error,request, response, next)=>{
-    console.log(error);
     response.status(500).send('NERO FIDDLES, THE SERVERS BURN');
-
 });
 
 
