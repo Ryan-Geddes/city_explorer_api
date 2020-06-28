@@ -5,43 +5,70 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
-
-//THIS IS MAGIC
+const pg = require('pg');
 const PORT = process.env.PORT;
 
 //get an 'instance' of express as our app
 
 const app = express();
+const client = new pg.Client(process.env.POSTGRES);
 
 //this allows us to use cors for security? it throws the following error if you forget to type this:
 //Access to XMLHttpRequest at 'http://localhost:3000/location' from origin 'http://127.0.0.1:8080' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
 
 app.use( cors() );
 
-//.listen expects a PORT and a callback function
+app.listen(PORT, ()=> console.log('server running on port', PORT));
+//start our server only if 
+// client.connect()
+//     .then( () => {
+//         app.listen(PORT, () => {
 
-app.listen(PORT, () => console.log('server running on port', PORT));
+//          console.log('server running on port', PORT);
+//         });
+//     })
+//     .catch(err => {
+//         throw `PG startup error: ${err.message}`
+//     });
 
-//API Keys
 
 
 
 
-// route on the '/' in the URL bar of the browser
-app.get('/', (request, response) =>{
-    response.send('testing123');
-});
+//routes
+app.get('/', homepageHandler);
+app.get('/location', locationHandler);
+app.get('/weather', weatherHandler);
+app.get('/trails', trailsHandler);
+app.get('/add', addHandler);
 
-app.get('/location', (request, response)=>{
+
+//create a datacache
+let dataCache = {};
+
+function homepageHandler (request, response){
+    response.status(200).send('in the pipe 5 by 5');
+};
+
+function locationHandler(request, response){
 
 const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${request.query.city}&format=json`
-
-superagent.get(API)
-.then(data => {
-    let location = new Location(data.body[0], request.query.city);
-    response.status(200).json(location);
-})
-});
+    
+    if (dataCache[request.query.city]){
+        console.log('we used the cache!!!');
+        response.status(200).json(dataCache[request.query.city])
+        }
+    else{
+        superagent.get(API)
+        .then(data => {
+            let location = new Location(data.body[0], request.query.city);
+            dataCache[request.query.city] = location;
+            console.log('we used the API');
+            console.log(dataCache);
+            response.status(200 ).json(location);
+        })
+    }
+};
 
 //constructor to normalize data pulled from API
 //Location Constructor function
@@ -54,9 +81,12 @@ function Location(obj, city) {
     this.search_query = city;
 }
 
-//write a route for restaurants
+function addHandler(request, response) {
+    // console.log(request.query);
 
-app.get('/weather', (request, response)=>{
+}
+
+function weatherHandler(request, response){
     let lat = request.query.latitude;
     let lon = request.query.longitude;
     const API = `https://api.weatherbit.io/v2.0/forecast/daily?&lat=${lat}&lon=${lon}&key=${process.env.WEATHERBIT}`;
@@ -67,7 +97,7 @@ app.get('/weather', (request, response)=>{
         response.status(200).json(getWeather(data));
     });
 
-});
+};
 
 const getWeather = (arr) => {
     let forecast = arr.map(function(weatherObj){
@@ -77,25 +107,24 @@ const getWeather = (arr) => {
     return forecast;
 };
 
-
 function Weather(obj) {
     this.forecast = obj.weather.description;
     let result = new Date(obj.valid_date);
     this.time = result.toDateString();
 }
 
-app.get('/trails', (request,response)=>{
+function trailsHandler (request, response) {
     let lat = request.query.latitude;
     let lon = request.query.longitude;
     const API = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&key=${process.env.HIKING}`
-    console.log(API);
+    // console.log(API);
     superagent.get(API)
         .then(results => {
             let data = results.body.trails;
-            console.log(data);
+            // console.log(data);
             response.status(200).json(getTrails(data));
         });
-});
+};
 
 const getTrails = (arr) => {
     let trailList = arr.map(function(trailObj){
@@ -129,7 +158,7 @@ app.get('/restaurants', (request, response)=>{
     let normRest = new Restaurant(restObj);
     allRestaurants.push(normRest);
     });
-console.log(normRest);
+// console.log(normRest);
 response.status(200).json(allRestaurants);
 });
 
