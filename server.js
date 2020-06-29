@@ -7,6 +7,7 @@ const cors = require('cors');
 const superagent = require('superagent');
 const pg = require('pg');
 const { response } = require('express');
+
 const PORT = process.env.PORT;
 
 //get an 'instance' of express as our app
@@ -49,6 +50,7 @@ function locationHandler(request, response){
 };
 
 
+
 function fetchFromApi(city, response){
     const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${city}&format=json`
     
@@ -62,6 +64,7 @@ function fetchFromApi(city, response){
         response.status(200 ).json(location);
     })
 }
+
 
 function insertDatabase(obj){
     const lat = obj.latitude;
