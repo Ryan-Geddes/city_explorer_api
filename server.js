@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
 const pg = require('pg');
+const { response } = require('express');
 const PORT = process.env.PORT;
 
 //get an 'instance' of express as our app
@@ -18,20 +19,6 @@ const client = new pg.Client(process.env.POSTGRES);
 
 app.use( cors() );
 
-app.listen(PORT, ()=> console.log('server running on port', PORT));
-//start our server only if 
-// client.connect()
-//     .then( () => {
-//         app.listen(PORT, () => {
-
-//          console.log('server running on port', PORT);
-//         });
-//     })
-//     .catch(err => {
-//         throw `PG startup error: ${err.message}`
-//     });
-
-
 
 
 
@@ -40,7 +27,7 @@ app.get('/', homepageHandler);
 app.get('/location', locationHandler);
 app.get('/weather', weatherHandler);
 app.get('/trails', trailsHandler);
-app.get('/add', addHandler);
+// app.get('/add', addHandler);
 
 
 //create a datacache
@@ -51,28 +38,50 @@ function homepageHandler (request, response){
 };
 
 function locationHandler(request, response){
-
-const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${request.query.city}&format=json`
     
     if (dataCache[request.query.city]){
         console.log('we used the cache!!!');
         response.status(200).json(dataCache[request.query.city])
-        }
+    }
     else{
-        superagent.get(API)
-        .then(data => {
-            let location = new Location(data.body[0], request.query.city);
-            dataCache[request.query.city] = location;
-            console.log('we used the API');
-            console.log(dataCache);
-            response.status(200 ).json(location);
-        })
+        fetchFromApi(request.query.city, response);
     }
 };
 
-//constructor to normalize data pulled from API
-//Location Constructor function
-//take in some big obj and turn it into something that matches the contract
+
+function fetchFromApi(city, response){
+    const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${city}&format=json`
+    
+    superagent.get(API)
+    .then(data => {
+        let location = new Location(data.body[0], city);
+        //dataCache[city] = location;
+        insertDatabase(location);
+        console.log('we used the API');
+        //console.log(dataCache);
+        response.status(200 ).json(location);
+    })
+}
+
+function insertDatabase(obj){
+    const lat = obj.latitude;
+    const lon = obj.longitude;
+    const formatted_query = obj.formatted_query;
+    const search_query = obj.search_query;
+    const safeQuery = [lat, lon, formatted_query, search_query];
+
+    //create SQL query
+    const SQL = 'INSERT INTO locationdb (lat, lon, formatted_query, search_query) VALUES ($1, $2, $3, $4);'
+
+    //give our SQL query to our pg 'agent'
+
+    client.query(SQL, safeQuery)
+        .then (results => {
+            response.status(200).json(results);
+            console.log(results);
+        })
+        .catch(error => {response.status(500).send(error)});
+}
 
 function Location(obj, city) {
     this.latitude = obj.lat;
@@ -81,10 +90,10 @@ function Location(obj, city) {
     this.search_query = city;
 }
 
-function addHandler(request, response) {
-    // console.log(request.query);
-
-}
+// function addHandler(request, response) {
+//     const 
+    
+// }
 
 function weatherHandler(request, response){
     let lat = request.query.latitude;
@@ -96,7 +105,7 @@ function weatherHandler(request, response){
         let data = results.body.data;
         response.status(200).json(getWeather(data));
     });
-
+    
 };
 
 const getWeather = (arr) => {
@@ -119,11 +128,11 @@ function trailsHandler (request, response) {
     const API = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&key=${process.env.HIKING}`
     // console.log(API);
     superagent.get(API)
-        .then(results => {
-            let data = results.body.trails;
-            // console.log(data);
-            response.status(200).json(getTrails(data));
-        });
+    .then(results => {
+        let data = results.body.trails;
+        // console.log(data);
+        response.status(200).json(getTrails(data));
+    });
 };
 
 const getTrails = (arr) => {
@@ -132,7 +141,7 @@ const getTrails = (arr) => {
         return normTrail;
     });
     return trailList;
-
+    
 };
 
 
@@ -150,16 +159,16 @@ function Trail(obj) {
 }
 
 app.get('/restaurants', (request, response)=>{
-
+    
     let data = require('./data/weather.json');
     let allRestaurants = [];
-
+    
     data.nearby_restaurants.forEach(restObj => {
-    let normRest = new Restaurant(restObj);
-    allRestaurants.push(normRest);
+        let normRest = new Restaurant(restObj);
+        allRestaurants.push(normRest);
     });
-// console.log(normRest);
-response.status(200).json(allRestaurants);
+    // console.log(normRest);
+    response.status(200).json(allRestaurants);
 });
 
 function Restaurant(obj) {
@@ -172,12 +181,44 @@ app.use('*', (request, response)=>{
     response.status(404).send('I have no idea what you want');
 });
 
+app.get('/retrieve', (request, response) => {
+    //create query
+    const SQL = 'SELECT * from locationdb';
+
+    //give our SQL query to our pg 'agent'
+    client.query(SQL)
+        .then (results => {
+            response.status(200).json(results);
+        })
+        .catch(error => {response.status(500).send(error)});
+
+})
+
 app.use((error,request, response, next)=>{
     console.log(error);
     response.status(500).send('NERO FIDDLES, THE SERVERS BURN');
-
+    
 });
 
+client.connect()
+    .then( () => {
+    app.listen(PORT, ()=> console.log('server running on port', PORT));
+    })
+    .catch(err => {
+        throw `PG startuperror: ${err.message}`;
+    });
+
+//start our server only if 
+// client.connect()
+//     .then( () => {
+//         app.listen(PORT, () => {
+
+//          console.log('server running on port', PORT);
+//         });
+//     })
+//     .catch(err => {
+//         throw `PG startup error: ${err.message}`
+//     });
 
 //handle a request fror the location data
 //et a city from the client
