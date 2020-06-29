@@ -5,50 +5,86 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
+const pg = require('pg');
+const { response } = require('express');
 
-
-//THIS IS MAGIC
 const PORT = process.env.PORT;
 
 //get an 'instance' of express as our app
 
 const app = express();
+const client = new pg.Client(process.env.POSTGRES);
 
 //this allows us to use cors for security? it throws the following error if you forget to type this:
 //Access to XMLHttpRequest at 'http://localhost:3000/location' from origin 'http://127.0.0.1:8080' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
 
 app.use( cors() );
 
-//.listen expects a PORT and a callback function
-
-app.listen(PORT, () => console.log('server running on port', PORT));
-
-//API Keys
 
 
 
-
-// route on the '/' in the URL bar of the browser
-app.get('/', (request, response) =>{
-    response.send('testing123');
-});
-
-app.get('/location', (request, response)=>{
-
-const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${request.query.city}&format=json`
+//routes
+app.get('/', homepageHandler);
+app.get('/location', locationHandler);
+app.get('/weather', weatherHandler);
+app.get('/trails', trailsHandler);
+// app.get('/add', addHandler);
 
 
-superagent.get(API)
-.then(data => {
-    let location = new Location(data.body[0], request.query.city);
-    response.status(200).json(location);
-})
+//create a datacache
+let dataCache = {};
 
-});
+function homepageHandler (request, response){
+    response.status(200).send('in the pipe 5 by 5');
+};
 
-//constructor to normalize data pulled from API
-//Location Constructor function
-//take in some big obj and turn it into something that matches the contract
+function locationHandler(request, response){
+    
+    if (dataCache[request.query.city]){
+        console.log('we used the cache!!!');
+        response.status(200).json(dataCache[request.query.city])
+    }
+    else{
+        fetchFromApi(request.query.city, response);
+    }
+};
+
+
+
+function fetchFromApi(city, response){
+    const API = `https://us1.locationiq.com/v1/search.php?key=${process.env.GEOCODE}&q=${city}&format=json`
+    
+    superagent.get(API)
+    .then(data => {
+        let location = new Location(data.body[0], city);
+        //dataCache[city] = location;
+        insertDatabase(location);
+        console.log('we used the API');
+        //console.log(dataCache);
+        response.status(200 ).json(location);
+    })
+}
+
+
+function insertDatabase(obj){
+    const lat = obj.latitude;
+    const lon = obj.longitude;
+    const formatted_query = obj.formatted_query;
+    const search_query = obj.search_query;
+    const safeQuery = [lat, lon, formatted_query, search_query];
+
+    //create SQL query
+    const SQL = 'INSERT INTO locationdb (lat, lon, formatted_query, search_query) VALUES ($1, $2, $3, $4);'
+
+    //give our SQL query to our pg 'agent'
+
+    client.query(SQL, safeQuery)
+        .then (results => {
+            response.status(200).json(results);
+            console.log(results);
+        })
+        .catch(error => {response.status(500).send(error)});
+}
 
 function Location(obj, city) {
     this.latitude = obj.lat;
@@ -57,9 +93,12 @@ function Location(obj, city) {
     this.search_query = city;
 }
 
-//write a route for restaurants
+// function addHandler(request, response) {
+//     const 
+    
+// }
 
-app.get('/weather', (request, response)=>{
+function weatherHandler(request, response){
     let lat = request.query.latitude;
     let lon = request.query.longitude;
     const API = `https://api.weatherbit.io/v2.0/forecast/daily?&lat=${lat}&lon=${lon}&key=${process.env.WEATHERBIT}`;
@@ -69,8 +108,8 @@ app.get('/weather', (request, response)=>{
         let data = results.body.data;
         response.status(200).json(getWeather(data));
     });
-
-});
+    
+};
 
 const getWeather = (arr) => {
     let forecast = arr.map(function(weatherObj){
@@ -80,25 +119,24 @@ const getWeather = (arr) => {
     return forecast;
 };
 
-
 function Weather(obj) {
     this.forecast = obj.weather.description;
     let result = new Date(obj.valid_date);
     this.time = result.toDateString();
 }
 
-app.get('/trails', (request,response)=>{
+function trailsHandler (request, response) {
     let lat = request.query.latitude;
     let lon = request.query.longitude;
     const API = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&key=${process.env.HIKING}`
-    console.log(API);
+    // console.log(API);
     superagent.get(API)
-        .then(results => {
-            let data = results.body.trails;
-            console.log(data);
-            response.status(200).json(getTrails(data));
-        });
-});
+    .then(results => {
+        let data = results.body.trails;
+        // console.log(data);
+        response.status(200).json(getTrails(data));
+    });
+};
 
 const getTrails = (arr) => {
     let trailList = arr.map(function(trailObj){
@@ -106,7 +144,7 @@ const getTrails = (arr) => {
         return normTrail;
     });
     return trailList;
-
+    
 };
 
 
@@ -124,16 +162,16 @@ function Trail(obj) {
 }
 
 app.get('/restaurants', (request, response)=>{
-
+    
     let data = require('./data/weather.json');
     let allRestaurants = [];
-
+    
     data.nearby_restaurants.forEach(restObj => {
-    let normRest = new Restaurant(restObj);
-    allRestaurants.push(normRest);
+        let normRest = new Restaurant(restObj);
+        allRestaurants.push(normRest);
     });
-console.log(normRest);
-response.status(200).json(allRestaurants);
+    // console.log(normRest);
+    response.status(200).json(allRestaurants);
 });
 
 function Restaurant(obj) {
@@ -146,12 +184,44 @@ app.use('*', (request, response)=>{
     response.status(404).send('I have no idea what you want');
 });
 
+app.get('/retrieve', (request, response) => {
+    //create query
+    const SQL = 'SELECT * from locationdb';
+
+    //give our SQL query to our pg 'agent'
+    client.query(SQL)
+        .then (results => {
+            response.status(200).json(results);
+        })
+        .catch(error => {response.status(500).send(error)});
+
+})
+
 app.use((error,request, response, next)=>{
     console.log(error);
     response.status(500).send('NERO FIDDLES, THE SERVERS BURN');
-
+    
 });
 
+client.connect()
+    .then( () => {
+    app.listen(PORT, ()=> console.log('server running on port', PORT));
+    })
+    .catch(err => {
+        throw `PG startuperror: ${err.message}`;
+    });
+
+//start our server only if 
+// client.connect()
+//     .then( () => {
+//         app.listen(PORT, () => {
+
+//          console.log('server running on port', PORT);
+//         });
+//     })
+//     .catch(err => {
+//         throw `PG startup error: ${err.message}`
+//     });
 
 //handle a request fror the location data
 //et a city from the client
