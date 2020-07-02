@@ -6,7 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
 const pg = require('pg');
-const { response } = require('express');
+// const { response } = require('express');
 const PORT = process.env.PORT;
 
 //get an 'instance' of express as our app
@@ -24,7 +24,7 @@ app.use( cors() );
 
 //routes
 app.get('/', homepageHandler);
-app.get('/location', locationHandler);
+app.get('/location', fetchFromDb);
 app.get('/weather', weatherHandler);
 app.get('/trails', trailsHandler);
 // app.get('/add', addHandler);
@@ -37,15 +37,41 @@ function homepageHandler (request, response){
     response.status(200).send('in the pipe 5 by 5');
 };
 
-function locationHandler(request, response){
-    
-    if (dataCache[request.query.city]){
-        console.log('we used the cache!!!');
-        response.status(200).json(dataCache[request.query.city])
+function locationHandler(dbresult, request, response){
+    // write a function to return all the data from the db
+    // console.log('THIS IS THE CONSOLE FROM LINE42');
+    // let dataCache = fetchFromDb(request, response);
+    // console.log(dataCache);
+    // response.status(200).json(datacache)
+    console.log('line 46 cl', dbresult.rows[0]);
+    console.log(request.query.city);
+    if (dbresult.rows[0]){
+        console.log('we used the db!!!');
+        response.status(200).json(dbresult.rows[0])
     }
     else{
         fetchFromApi(request.query.city, response);
     }
+    
+};
+
+function fetchFromDb(request, response){
+
+    // write logic to only select objects that match search query
+    const SQL = `SELECT * FROM locationdb WHERE search_query = '${request.query.city}' LIMIT 1;`
+
+    //give our SQL query to our pg 'agent'
+    return client.query(SQL)
+        .then (results => locationHandler(results, request, response)
+            // console.log(`THIS IS THE CONSOLE LOG ON 59`);
+            // console.log(results);
+            // return results;
+            // console.log(results.rows[request.query.city]);
+        )
+        .catch(error => {
+            console.log(error.message);
+            response.status(500).send(error)});
+
 };
 
 
@@ -58,27 +84,29 @@ function fetchFromApi(city, response){
         //dataCache[city] = location;
         insertDatabase(location);
         console.log('we used the API');
-        //console.log(dataCache);
+        console.log(location);
         response.status(200 ).json(location);
     })
 }
 
 function insertDatabase(obj){
-    const lat = obj.latitude;
-    const lon = obj.longitude;
+    const latitude = obj.latitude;
+    const longitude = obj.longitude;
     const formatted_query = obj.formatted_query;
     const search_query = obj.search_query;
-    const safeQuery = [lat, lon, formatted_query, search_query];
+    const safeQuery = [latitude, longitude, formatted_query, search_query];
+
+    //TODO: write logic to ONLY write into db if there is an API call, to prevent duplicate
 
     //create SQL query
-    const SQL = 'INSERT INTO locationdb (lat, lon, formatted_query, search_query) VALUES ($1, $2, $3, $4);'
+    const SQL = 'INSERT INTO locationdb (latitude, longitude, formatted_query, search_query) VALUES ($1, $2, $3, $4) RETURNING *'
 
     //give our SQL query to our pg 'agent'
 
     client.query(SQL, safeQuery)
         .then (results => {
             response.status(200).json(results);
-            console.log(results);
+            //console.log(results);
         })
         .catch(error => {response.status(500).send(error)});
 }
