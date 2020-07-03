@@ -177,27 +177,24 @@ function yelpHandler (request, response){
         Authorization: `Bearer ${process.env.YELP_API_KEY}`,
         format: 'json'
       }
+      let url_params = {
+          'limit': 5,
+          'offset':5
+      }
     let page = request.query.page;
+    let rowsPerPage = 5;
     console.log(page);
     let yelpArr = [];
     const API = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.latitude}&longitude=${request.query.longitude}`
     superagent.get(API)
     .set(queryObject)
+    .set(url_params)
     .then(results =>{
         results.body.businesses.forEach(business => {
             let businessObj = new Yelp(business);
             yelpArr.push(businessObj);
         });
-        let pageArr = yelpArr.slice((page-1),page+4);
-        for (let j = 0; j < 4; j++){
-            yelpArr.shift()
-        };
-        response.status(200).json(pageArr);          
-        //oh my god this is the dumbest way possible to paginate and it doesn't even work
-        //what I just coded is one of the most insanely idiotic things I have ever seen. At no point in my rambling, incoherent response, was I
-        // even close to anything that could be considered a rational thought. Everyone in this room is now dumber for having experienced it. 
-        //I award myself no points, and may God have mercy on my soul.
-        
+        response.status(200).json(yelpPagina(yelpArr, page));          
         // console.log(yelpArr);
         // console.log(results.body)
         // response.status(200).json(results.body);
@@ -208,12 +205,14 @@ function yelpHandler (request, response){
 
 };
 function yelpPagina(objArr, page){
-    let yelpsPerPage = 5;
-    //when page = 1, show 1-5,
-    //when page =2, show 6-10
+    let yelpPerPage = 5;
+    let pageArr = objArr.slice((page*yelpPerPage)-5,page*yelpPerPage);
+    return(pageArr);
+};
 
 
-}
+
+
 
 function Yelp(obj){
     this.name = obj.name;
