@@ -29,6 +29,7 @@ app.get('/', homepageHandler);
 app.get('/location', fetchFromDb);
 app.get('/weather', weatherHandler);
 app.get('/trails', trailsHandler);
+app.get('/movies', moviesHandler);
 // app.get('/add', addHandler);
 
 
@@ -40,13 +41,14 @@ function homepageHandler (request, response){
 };
 
 function locationHandler(dbresult, request, response){
+
     // write a function to return all the data from the db
     // console.log('THIS IS THE CONSOLE FROM LINE42');
     // let dataCache = fetchFromDb(request, response);
     // console.log(dataCache);
     // response.status(200).json(datacache)
-    console.log('line 46 cl', dbresult.rows[0]);
-    console.log(request.query.city);
+    // console.log('line 46 cl', dbresult.rows[0]);
+    // console.log(request.query.city);
     if (dbresult.rows[0]){
         console.log('we used the db!!!');
         response.status(200).json(dbresult.rows[0])
@@ -56,6 +58,8 @@ function locationHandler(dbresult, request, response){
     }
     
 };
+
+
 
 function fetchFromDb(request, response){
 
@@ -87,7 +91,7 @@ function fetchFromApi(city, response){
         //dataCache[city] = location;
         insertDatabase(location);
         console.log('we used the API');
-        console.log(location);
+        currentLocation = location;
         response.status(200 ).json(location);
     })
 }
@@ -122,10 +126,23 @@ function Location(obj, city) {
     this.search_query = city;
 }
 
-// function addHandler(request, response) {
-//     const 
-    
-// }
+function moviesHandler(request, response) {
+    console.log(`line 127 ${request.query.search_query}`);
+    let locationMovieArr = [];
+    const API = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.search_query}`
+    superagent.get(API)
+        .then(obj =>{
+            obj.body.results.forEach(movie =>{
+                let movieObj = new Movie(movie);
+                locationMovieArr.push(movieObj);   
+            })
+        response.status(200).json(locationMovieArr);
+        console.log(locationMovieArr);
+        })
+        .catch(error => {
+            console.log(`error with MoviesHandler: ${error}`)
+            response.status(500).send(error)});
+}
 
 function weatherHandler(request, response){
     let lat = request.query.latitude;
@@ -139,6 +156,17 @@ function weatherHandler(request, response){
     });
     
 };
+
+function Movie(obj) {
+    this.title = obj.title;
+    this.overview = obj.overview;
+    this.average_votes = obj.vote_average;
+    this.total_votes = obj.vote_count;
+    this.image_url = `https://image.tmdb.org/t/p/original/${obj.poster_path}`;
+    this.popularity = obj.popularity;
+    this.released_on = obj.release_date;
+
+}
 
 const getWeather = (arr) => {
     let forecast = arr.map(function(weatherObj){
