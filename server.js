@@ -29,6 +29,8 @@ app.get('/', homepageHandler);
 app.get('/location', fetchFromDb);
 app.get('/weather', weatherHandler);
 app.get('/trails', trailsHandler);
+app.get('/movies', moviesHandler);
+app.get('/yelp', yelpHandler);
 // app.get('/add', addHandler);
 
 
@@ -40,13 +42,14 @@ function homepageHandler (request, response){
 };
 
 function locationHandler(dbresult, request, response){
+
     // write a function to return all the data from the db
     // console.log('THIS IS THE CONSOLE FROM LINE42');
     // let dataCache = fetchFromDb(request, response);
     // console.log(dataCache);
     // response.status(200).json(datacache)
-    console.log('line 46 cl', dbresult.rows[0]);
-    console.log(request.query.city);
+    // console.log('line 46 cl', dbresult.rows[0]);
+    // console.log(request.query.city);
     if (dbresult.rows[0]){
         console.log('we used the db!!!');
         response.status(200).json(dbresult.rows[0])
@@ -56,6 +59,8 @@ function locationHandler(dbresult, request, response){
     }
     
 };
+
+
 
 function fetchFromDb(request, response){
 
@@ -87,7 +92,7 @@ function fetchFromApi(city, response){
         //dataCache[city] = location;
         insertDatabase(location);
         console.log('we used the API');
-        console.log(location);
+        currentLocation = location;
         response.status(200 ).json(location);
     })
 }
@@ -122,10 +127,23 @@ function Location(obj, city) {
     this.search_query = city;
 }
 
-// function addHandler(request, response) {
-//     const 
-    
-// }
+function moviesHandler(request, response) {
+    // console.log(`line 127 ${request.query.search_query}`);
+    let locationMovieArr = [];
+    const API = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.search_query}`
+    superagent.get(API)
+        .then(obj =>{
+            obj.body.results.forEach(movie =>{
+                let movieObj = new Movie(movie);
+                locationMovieArr.push(movieObj);   
+            })
+        response.status(200).json(locationMovieArr);
+        // console.log(locationMovieArr);
+        })
+        .catch(error => {
+            console.log(`error with MoviesHandler: ${error}`)
+            response.status(500).send(error)});
+}
 
 function weatherHandler(request, response){
     let lat = request.query.latitude;
@@ -138,6 +156,70 @@ function weatherHandler(request, response){
         response.status(200).json(getWeather(data));
     });
     
+};
+
+function Movie(obj) {
+    this.title = obj.title;
+    this.overview = obj.overview;
+    this.average_votes = obj.vote_average;
+    this.total_votes = obj.vote_count;
+    this.image_url = `https://image.tmdb.org/t/p/original/${obj.poster_path}`;
+    this.popularity = obj.popularity;
+    this.released_on = obj.release_date;
+
+}
+
+function yelpHandler (request, response){
+ console.log(`LINE 173 ${request.query.latitude}`)
+
+ //latitude=${request.query.latitude}&longitude=${request.query.longitude}
+    let queryObject = {
+        Authorization: `Bearer ${process.env.YELP_API_KEY}`,
+        format: 'json'
+      }
+      let url_params = {
+          'limit': 5,
+          'offset':5
+      }
+    let page = request.query.page;
+    let rowsPerPage = 5;
+    console.log(page);
+    let yelpArr = [];
+    const API = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.latitude}&longitude=${request.query.longitude}`
+    superagent.get(API)
+    .set(queryObject)
+    .set(url_params)
+    .then(results =>{
+        results.body.businesses.forEach(business => {
+            let businessObj = new Yelp(business);
+            yelpArr.push(businessObj);
+        });
+        response.status(200).json(yelpPagina(yelpArr, page));          
+        // console.log(yelpArr);
+        // console.log(results.body)
+        // response.status(200).json(results.body);
+    })
+    .catch(error => {
+        console.log(`error with YelpHandler: ${error}`)
+        response.status(500).send(error)});
+
+};
+function yelpPagina(objArr, page){
+    let yelpPerPage = 5;
+    let pageArr = objArr.slice((page*yelpPerPage)-5,page*yelpPerPage);
+    return(pageArr);
+};
+
+
+
+
+
+function Yelp(obj){
+    this.name = obj.name;
+    this.image_url = obj.image_url;
+    this.price = obj.price;
+    this.rating = obj.rating;
+    this.url = obj.url;
 };
 
 const getWeather = (arr) => {
