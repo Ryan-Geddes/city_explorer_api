@@ -171,11 +171,14 @@ function Movie(obj) {
 
 function yelpHandler (request, response){
  console.log(`LINE 173 ${request.query.latitude}`)
+
  //latitude=${request.query.latitude}&longitude=${request.query.longitude}
     let queryObject = {
         Authorization: `Bearer ${process.env.YELP_API_KEY}`,
         format: 'json'
       }
+    let page = request.query.page;
+    console.log(page);
     let yelpArr = [];
     const API = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.latitude}&longitude=${request.query.longitude}`
     superagent.get(API)
@@ -185,7 +188,16 @@ function yelpHandler (request, response){
             let businessObj = new Yelp(business);
             yelpArr.push(businessObj);
         });
-        response.status(200).json(yelpArr);
+        let pageArr = yelpArr.slice((page-1),page+4);
+        for (let j = 0; j < 4; j++){
+            yelpArr.shift()
+        };
+        response.status(200).json(pageArr);          
+        //oh my god this is the dumbest way possible to paginate and it doesn't even work
+        //what I just coded is one of the most insanely idiotic things I have ever seen. At no point in my rambling, incoherent response, was I
+        // even close to anything that could be considered a rational thought. Everyone in this room is now dumber for having experienced it. 
+        //I award myself no points, and may God have mercy on my soul.
+        
         // console.log(yelpArr);
         // console.log(results.body)
         // response.status(200).json(results.body);
@@ -195,7 +207,13 @@ function yelpHandler (request, response){
         response.status(500).send(error)});
 
 };
+function yelpPagina(objArr, page){
+    let yelpsPerPage = 5;
+    //when page = 1, show 1-5,
+    //when page =2, show 6-10
 
+
+}
 
 function Yelp(obj){
     this.name = obj.name;
