@@ -30,6 +30,7 @@ app.get('/location', fetchFromDb);
 app.get('/weather', weatherHandler);
 app.get('/trails', trailsHandler);
 app.get('/movies', moviesHandler);
+app.get('/yelp', yelpHandler);
 // app.get('/add', addHandler);
 
 
@@ -127,7 +128,7 @@ function Location(obj, city) {
 }
 
 function moviesHandler(request, response) {
-    console.log(`line 127 ${request.query.search_query}`);
+    // console.log(`line 127 ${request.query.search_query}`);
     let locationMovieArr = [];
     const API = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.search_query}`
     superagent.get(API)
@@ -137,7 +138,7 @@ function moviesHandler(request, response) {
                 locationMovieArr.push(movieObj);   
             })
         response.status(200).json(locationMovieArr);
-        console.log(locationMovieArr);
+        // console.log(locationMovieArr);
         })
         .catch(error => {
             console.log(`error with MoviesHandler: ${error}`)
@@ -167,6 +168,42 @@ function Movie(obj) {
     this.released_on = obj.release_date;
 
 }
+
+function yelpHandler (request, response){
+ console.log(`LINE 173 ${request.query.latitude}`)
+ //latitude=${request.query.latitude}&longitude=${request.query.longitude}
+    let queryObject = {
+        Authorization: `Bearer ${process.env.YELP_API_KEY}`,
+        format: 'json'
+      }
+    let yelpArr = [];
+    const API = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.latitude}&longitude=${request.query.longitude}`
+    superagent.get(API)
+    .set(queryObject)
+    .then(results =>{
+        results.body.businesses.forEach(business => {
+            let businessObj = new Yelp(business);
+            yelpArr.push(businessObj);
+        });
+        response.status(200).json(yelpArr);
+        // console.log(yelpArr);
+        // console.log(results.body)
+        // response.status(200).json(results.body);
+    })
+    .catch(error => {
+        console.log(`error with YelpHandler: ${error}`)
+        response.status(500).send(error)});
+
+};
+
+
+function Yelp(obj){
+    this.name = obj.name;
+    this.image_url = obj.image_url;
+    this.price = obj.price;
+    this.rating = obj.rating;
+    this.url = obj.url;
+};
 
 const getWeather = (arr) => {
     let forecast = arr.map(function(weatherObj){
