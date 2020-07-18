@@ -320,7 +320,7 @@ client.connect()
     })
     .catch(err => {
         throw `PG startuperror: ${err.message}`;
-    });
+});
 
 //start our server only if 
 // client.connect()
