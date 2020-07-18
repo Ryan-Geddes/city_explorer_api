@@ -14,7 +14,7 @@ const PORT = process.env.PORT;
 //get an 'instance' of express as our app
 
 const app = express();
-const client = new pg.Client(process.env.POSTGRES);
+const client = new pg.Client('postgres://gmvdyjfvyztqsa:c621457914b4ff733a5cae14de38e5ca875e23b77b58df09099779c59616f5bb@ec2-50-16-198-4.compute-1.amazonaws.com:5432/dcgb021s6rplvl');
 
 //this allows us to use cors for security? it throws the following error if you forget to type this:
 //Access to XMLHttpRequest at 'http://localhost:3000/location' from origin 'http://127.0.0.1:8080' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
